@@ -26,9 +26,29 @@ type RTUClientHandler struct {
 
 // NewRTUClientHandler allocates and initializes a RTUClientHandler.
 func NewRTUClientHandler(address string) *RTUClientHandler {
+	var cfg = &SerialConfig{}
+	cfg.Address = address
+	cfg.Timeout = serialTimeout
 	handler := &RTUClientHandler{}
-	handler.Address = address
-	handler.Timeout = serialTimeout
+	handler.Config = cfg
+	handler.IdleTimeout = serialIdleTimeout
+	return handler
+}
+
+// RTUHandler allocates and initializes a RTUClientHandler.
+func RTUHandler(cfg DailConfig) *RTUClientHandler {
+	switch c := cfg.(type) {
+	case *SerialConfig:
+		if c.Timeout == 0 {
+			c.Timeout = serialTimeout
+		}
+	case *SerialOverTCPConfig:
+		if c.Timeout == 0 {
+			c.Timeout = serialTimeout
+		}
+	}
+	handler := &RTUClientHandler{}
+	handler.Config = cfg
 	handler.IdleTimeout = serialIdleTimeout
 	return handler
 }
@@ -168,14 +188,18 @@ func (mb *rtuSerialTransporter) Send(aduRequest []byte) (aduResponse []byte, err
 // calculateDelay roughly calculates time needed for the next frame.
 // See MODBUS over Serial Line - Specification and Implementation Guide (page 13).
 func (mb *rtuSerialTransporter) calculateDelay(chars int) time.Duration {
+	cfg, ok := mb.Config.(*SerialConfig)
+	if !ok {
+		return 0
+	}
 	var characterDelay, frameDelay int // us
 
-	if mb.BaudRate <= 0 || mb.BaudRate > 19200 {
+	if cfg.BaudRate <= 0 || cfg.BaudRate > 19200 {
 		characterDelay = 750
 		frameDelay = 1750
 	} else {
-		characterDelay = 15000000 / mb.BaudRate
-		frameDelay = 35000000 / mb.BaudRate
+		characterDelay = 15000000 / cfg.BaudRate
+		frameDelay = 35000000 / cfg.BaudRate
 	}
 	return time.Duration(characterDelay*chars+frameDelay) * time.Microsecond
 }

@@ -28,9 +28,30 @@ type ASCIIClientHandler struct {
 
 // NewASCIIClientHandler allocates and initializes a ASCIIClientHandler.
 func NewASCIIClientHandler(address string) *ASCIIClientHandler {
+	var cfg = &SerialConfig{}
+	cfg.Address = address
+	cfg.Timeout = serialTimeout
+
 	handler := &ASCIIClientHandler{}
-	handler.Address = address
-	handler.Timeout = serialTimeout
+	handler.Config = cfg
+	handler.IdleTimeout = serialIdleTimeout
+	return handler
+}
+
+// ASCIIHandler allocates and initializes a ASCIIClientHandler.
+func ASCIIHandler(cfg DailConfig) *ASCIIClientHandler {
+	switch c := cfg.(type) {
+	case *SerialConfig:
+		if c.Timeout == 0 {
+			c.Timeout = serialTimeout
+		}
+	case *SerialOverTCPConfig:
+		if c.Timeout == 0 {
+			c.Timeout = serialTimeout
+		}
+	}
+	handler := &ASCIIClientHandler{}
+	handler.Config = cfg
 	handler.IdleTimeout = serialIdleTimeout
 	return handler
 }

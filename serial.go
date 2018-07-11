@@ -19,10 +19,26 @@ const (
 	serialIdleTimeout = 60 * time.Second
 )
 
+type DailConfig interface {
+	Dail() (io.ReadWriteCloser, error)
+}
+
+type SerialConfig struct {
+	serial.Config
+}
+
+func (cfg *SerialConfig) Dail() (io.ReadWriteCloser, error) {
+	port, err := serial.Open(&cfg.Config)
+	if err != nil {
+		return nil, err
+	}
+	return port, nil
+}
+
 // serialPort has configuration and I/O controller.
 type serialPort struct {
 	// Serial port configuration.
-	serial.Config
+	Config DailConfig
 
 	Logger      *log.Logger
 	IdleTimeout time.Duration
@@ -44,7 +60,7 @@ func (mb *serialPort) Connect() (err error) {
 // connect connects to the serial port if it is not connected. Caller must hold the mutex.
 func (mb *serialPort) connect() error {
 	if mb.port == nil {
-		port, err := serial.Open(&mb.Config)
+		port, err := mb.Config.Dail()
 		if err != nil {
 			return err
 		}
